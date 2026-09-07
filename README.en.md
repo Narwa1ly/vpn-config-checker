@@ -90,7 +90,9 @@ Releases are built by GitHub Actions on `v*` tags.
 - "Works" means 2ip.io opened through the config. Bandwidth is not measured.
 - sing-box is built for 4 KB memory pages and may fail to start on Android 15 in 16 KB mode.
 
-## Licenses
+## License
 
+The app is [GPL-3.0-or-later](LICENSE): use it, study it, modify it, but derived versions must stay open.
 [Xray-core](https://github.com/XTLS/Xray-core) (MPL-2.0) and [sing-box](https://github.com/SagerNet/sing-box)
-(GPL-3.0) are used as separate processes. The config lists belong to their authors and are downloaded at runtime.
+(GPL-3.0) run inside the APK as separate processes; exact versions and links to their sources are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The config lists belong to their authors and are downloaded at runtime.

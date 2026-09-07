@@ -1,0 +1,73 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Fetch Xray-core and sing-box binaries
+        run: ./scripts/fetch-cores.sh
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build debug APK
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Restore release keystore
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Build signed release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          VPNCHECK_KEYSTORE: ${{ runner.temp }}/release.jks
+          VPNCHECK_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          VPNCHECK_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          VPNCHECK_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "vpn-config-checker-${GITHUB_REF_NAME}.apk"
+          cp app/build/outputs/apk/release/app-release.apk vpn-config-checker.apk
+          sha256sum vpn-config-checker.apk > vpn-config-checker.apk.sha256
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "vpn-config-checker-${GITHUB_REF_NAME}.apk" vpn-config-checker.apk vpn-config-checker.apk.sha256 \
+            --title "VPN Config Checker $GITHUB_REF_NAME" \
+            --generate-notes
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: app/build/reports/tests/testDebugUnitTest

@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">VPN Config Checker</string>
+    <string name="notif_channel_name">Проверка конфигов</string>
+</resources>
